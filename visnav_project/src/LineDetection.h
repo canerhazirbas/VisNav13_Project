@@ -1,6 +1,13 @@
 #include "ros/ros.h"
 #include <highgui.h>
 #include <cv.h>
+#include <image_transport/image_transport.h>
+#include <cv_bridge/cv_bridge.h>
+#include <sensor_msgs/image_encodings.h>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/highgui/highgui.hpp>
+
+namespace enc = sensor_msgs::image_encodings;
 
 using namespace cv;
 
@@ -9,30 +16,37 @@ class LineDetection{
 private:
   Mat image;
   vector<Vec4i> lines;
+  ros::NodeHandle nh_;
+  image_transport::ImageTransport it_;
+  image_transport::Subscriber image_sub_;
+  image_transport::Publisher image_pub_;
 
 public:
-  LineDetection()
+  LineDetection() : it_(nh_)
   {
-    readImage();
-    findLines();
+    image_pub_ = it_.advertise("/line_image", 1);
+    image_sub_ = it_.subscribe("/ardrone/image_raw", 1, &LineDetection::readImage, this);
   }
 
-  void readImage(){
-
-    image = imread("/home/caner/fuerte_workspace/VisNav13_Project/visnav_project/src/image.jpg");
-    if (image.empty())
-      {
-        ROS_ERROR("Image is not found");
-        exit(-1);
-      }
+  void readImage(const sensor_msgs::ImageConstPtr& msg)
+  {
+    cv_bridge::CvImagePtr cv_ptr;
+    try
+    {
+      cv_ptr = cv_bridge::toCvCopy(msg, enc::BGR8);
+    }
+    catch (cv_bridge::Exception& e)
+    {
+      ROS_ERROR("cv_bridge exception: %s", e.what());
+      return;
+    }
+    findLines(cv_ptr);
   }
+  void findLines(cv_bridge::CvImagePtr& cv_ptr){
 
-  void findLines(){
-
-    Mat image_edges,image_lines;
-
-    Canny(image, image_edges, 50, 200, 3);
-    cvtColor(image_edges,image_lines, CV_GRAY2BGR);
+    Mat image_edges,image;
+    Canny(cv_ptr->image, image_edges, 50, 200, 3);
+    cvtColor(image_edges,cv_ptr->image, CV_GRAY2BGR);
 
     /* There are two possible hough methods, I used the probabilistic one for now from sample code */
 
@@ -40,13 +54,9 @@ public:
      for( size_t i = 0; i < lines.size(); i++ )
      {
        Vec4i l = lines[i];
-       line( image_lines, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,0,255), 3, CV_AA);
+       line( cv_ptr->image, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,0,255), 3, CV_AA);
      }
-
-    imshow("source", image);
-    imshow("detected lines", image_lines);
-
-    waitKey();
+    image_pub_.publish(cv_ptr->toImageMsg());
 
   }
 };
