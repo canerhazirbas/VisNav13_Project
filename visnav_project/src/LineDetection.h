@@ -9,7 +9,10 @@
 
 namespace enc = sensor_msgs::image_encodings;
 
+using namespace std;
 using namespace cv;
+
+namespace visnav_project{
 
 class LineDetection{
 
@@ -24,8 +27,9 @@ private:
 public:
   LineDetection() : it_(nh_)
   {
-    image_pub_ = it_.advertise("/line_image", 1);
+    image_pub_ = it_.advertise("/detected_lines_img", 1);
     image_sub_ = it_.subscribe("/ardrone/image_raw", 1, &LineDetection::readImage, this);
+
   }
 
   void readImage(const sensor_msgs::ImageConstPtr& msg)
@@ -40,6 +44,7 @@ public:
       ROS_ERROR("cv_bridge exception: %s", e.what());
       return;
     }
+
     findLines(cv_ptr);
   }
   void findLines(cv_bridge::CvImagePtr& cv_ptr){
@@ -48,7 +53,7 @@ public:
     Canny(cv_ptr->image, image_edges, 50, 200, 3);
     cvtColor(image_edges,cv_ptr->image, CV_GRAY2BGR);
 
-    /* There are two possible hough methods, I used the probabilistic one for now from sample code */
+    /* There are two possible hough methods, I used the probabilistic one */
 
      HoughLinesP(image_edges, lines, 1, CV_PI/180, 50, 50, 10 );
      for( size_t i = 0; i < lines.size(); i++ )
@@ -57,7 +62,8 @@ public:
        line( cv_ptr->image, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,0,255), 3, CV_AA);
      }
     image_pub_.publish(cv_ptr->toImageMsg());
-
+    ROS_INFO("Image: detected_lines_img published");
   }
 };
+}
 
