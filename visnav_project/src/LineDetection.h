@@ -1,3 +1,6 @@
+#ifndef LINEDETECTION_H
+#define LINEDETECTION_H
+
 #include "ros/ros.h"
 #include <highgui.h>
 #include <cv.h>
@@ -28,7 +31,7 @@ public:
   LineDetection() : it_(nh_)
   {
     image_pub_ = it_.advertise("/detected_lines_img", 1);
-    image_sub_ = it_.subscribe("/ardrone/image_raw", 1, &LineDetection::readImage, this);
+    image_sub_ = it_.subscribe("/ardrone/bottom/image_raw", 1, &LineDetection::readImage, this);
 
   }
 
@@ -49,8 +52,10 @@ public:
   }
   void findLines(cv_bridge::CvImagePtr& cv_ptr){
 
-    Mat image_edges,image;
-    Canny(cv_ptr->image, image_edges, 50, 200, 3);
+    Mat image,image_edges;
+    //cvtColor(cv_ptr->image,image,CV_BGR2HSV);
+    inRange(cv_ptr->image,Scalar(200,200,200),Scalar(255,255,255),image);
+    Canny(image, image_edges, 50, 200, 3);
     cvtColor(image_edges,cv_ptr->image, CV_GRAY2BGR);
 
     /* There are two possible hough methods, I used the probabilistic one */
@@ -59,11 +64,12 @@ public:
      for( size_t i = 0; i < lines.size(); i++ )
      {
        Vec4i l = lines[i];
-       line( cv_ptr->image, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,0,255), 3, CV_AA);
+       line( cv_ptr->image, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,0,255), 1, CV_AA);
      }
     image_pub_.publish(cv_ptr->toImageMsg());
-    ROS_INFO("Image: detected_lines_img published");
+    ROS_INFO("Number of detected lines: %ld",lines.size());
   }
 };
 }
 
+#endif //LINEDETECTION_H
