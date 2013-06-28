@@ -10,6 +10,8 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 
+#include "DirectionCalculation.h"
+
 namespace enc = sensor_msgs::image_encodings;
 
 using namespace std;
@@ -20,8 +22,10 @@ namespace visnav_project{
   class LineDetection{
 
   private:
-    Mat image;
     vector<Vec4i> lines;
+    DirectionCalculation direction_calc;
+    DirectionArrow       direction;
+
     ros::NodeHandle nh_;
     image_transport::ImageTransport it_;
     image_transport::Subscriber image_sub_;
@@ -61,13 +65,23 @@ namespace visnav_project{
       /* There are two possible hough methods, I used the probabilistic one */
 
        HoughLinesP(image_edges, lines, 1, CV_PI/180, 50, 50, 10 );
+       ROS_INFO("Number of detected lines: %ld",lines.size());
+
        for( size_t i = 0; i < lines.size(); i++ )
        {
          Vec4i l = lines[i];
          line( cv_ptr->image, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,0,255), 1, CV_AA);
        }
+
+       // Calculate direction arrow
+       direction_calc = DirectionCalculation(lines);
+       direction = direction_calc.getDirection();
+       // Draw direction line
+       ROS_INFO("Direction: start = (%d,%d), end = (%d,%d)",direction.getStart().x,direction.getStart().y,direction.getEnd().x,direction.getEnd().y);
+       line(cv_ptr->image,direction.getStart(),direction.getEnd(),Scalar(255,0,0),1,CV_AA);
+
       image_pub_.publish(cv_ptr->toImageMsg());
-      ROS_INFO("Number of detected lines: %ld",lines.size());
+
     }
   };
 }
