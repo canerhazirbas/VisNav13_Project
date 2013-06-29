@@ -4,16 +4,23 @@
      visnav_project
 
   </description>
-  <author>Caner Hazirbas</author>
+  <author>FangYi Zhi, Caner, Urs</author>
   <license>BSD</license>
   <review status="unreviewed" notes=""/>
-  <url>http://ros.org/wiki/visnav_project</url>
-  <depend package="std_msgs"/>
-  <depend package="roscpp"/>
+
+  <depend package="ardrone_autonomy"/>
+  <depend package="common_rosdeps" />
   <depend package="cv_bridge"/>
+  <depend package="dynamic_reconfigure"/>
+  <depend package="geometry_msgs"/>
   <depend package="image_transport"/>
   <depend package="opencv2"/>
-
+  <depend package="roscpp"/>
+  <depend package="sensor_msgs"/>
+  <depend package="std_msgs"/>
+  <depend package="tf"/>
+  <depend package="visualization_msgs"/>
+  
 </package>
 
 

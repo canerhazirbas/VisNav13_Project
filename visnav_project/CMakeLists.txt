@@ -16,8 +16,16 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 #set the default path for built libraries to the "lib" directory
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
+find_package(Eigen REQUIRED)
+include_directories(${Eigen_INCLUDE_DIRS})
+# add dynamic reconfigure api
+
+rosbuild_find_ros_package(dynamic_reconfigure)
+include(${dynamic_reconfigure_PACKAGE_PATH}/cmake/cfgbuild.cmake)
+gencfg()
+
 #uncomment if you have defined messages
-#rosbuild_genmsg()
+rosbuild_genmsg()
 #uncomment if you have defined services
 #rosbuild_gensrv()
 
@@ -29,4 +37,15 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 #rosbuild_add_executable(example examples/example.cpp)
 #target_link_libraries(example ${PROJECT_NAME})
 
-rosbuild_add_executable(${PROJECT_NAME} src/main.cpp src/LineDetection.h src/DirectionCalculation.h)
+rosbuild_add_executable(visnav_project
+  src/main.cpp 
+  src/marker.cpp 
+  src/EKF.cpp
+  src/DirectionCalculation.h
+  src/LineDetection.h
+)
+
+
+rosbuild_add_executable(ardrone_controller 
+  src/controller.cpp
+)

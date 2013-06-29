@@ -1,0 +1,12 @@
+\subsubsection parameters ROS parameters
+
+Reads and maintains the following parameters on the ROS server
+
+- \b "~enable" : \b [bool]  min: False, default: False, max: True
+- \b "~c_prop_trans" : \b [double] const for P-part of translation min: 0.0, default: 0.15, max: 2.0
+- \b "~c_int_trans" : \b [double] const for I-part of translation min: 0.0, default: 0.0, max: 2.0
+- \b "~c_deriv_trans" : \b [double] const for D-part of translation min: 0.0, default: 0.0, max: 2.0
+- \b "~c_prop_yaw" : \b [double] const for P-part of translation min: 0.0, default: 0.15, max: 2.0
+- \b "~c_int_yaw" : \b [double] const for I-part of translation min: 0.0, default: 0.0, max: 2.0
+- \b "~c_deriv_yaw" : \b [double] const for D-part of translation min: 0.0, default: 0.0, max: 2.0
+

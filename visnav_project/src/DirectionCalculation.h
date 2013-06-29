@@ -8,8 +8,6 @@
 using namespace std;
 using namespace cv;
 
-namespace visnav_project{
-
   class DirectionArrow{
 
   private:
@@ -77,5 +75,5 @@ namespace visnav_project{
   };
 
 
-}
+
 #endif // DIRECTIONCALCULATION_H

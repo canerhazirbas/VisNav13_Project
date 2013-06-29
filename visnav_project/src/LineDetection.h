@@ -17,7 +17,6 @@ namespace enc = sensor_msgs::image_encodings;
 using namespace std;
 using namespace cv;
 
-namespace visnav_project{
 
   class LineDetection{
 
@@ -84,6 +83,5 @@ namespace visnav_project{
 
     }
   };
-}
 
 #endif //LINEDETECTION_H
