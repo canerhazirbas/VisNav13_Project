@@ -11,12 +11,13 @@
 #include <opencv2/highgui/highgui.hpp>
 
 #include "DirectionCalculation.h"
+#include <ardrone_autonomy/Navdata.h>
 
 namespace enc = sensor_msgs::image_encodings;
 
 using namespace std;
 using namespace cv;
-
+using namespace ardrone_autonomy;
 
   class LineDetection{
 
@@ -24,18 +25,20 @@ using namespace cv;
     vector<Vec4i> lines;
     DirectionCalculation direction_calc;
     DirectionArrow       direction;
+    int altd;
 
     ros::NodeHandle nh_;
     image_transport::ImageTransport it_;
     image_transport::Subscriber image_sub_;
     image_transport::Publisher image_pub_;
+    ros::Subscriber navdata_sub_;
 
   public:
     LineDetection() : it_(nh_)
     {
-      image_pub_ = it_.advertise("/detected_lines_img", 1);
-      image_sub_ = it_.subscribe("/ardrone/bottom/image_raw", 1, &LineDetection::readImage, this);
-
+      image_pub_   = it_.advertise("/detected_lines_img", 1);
+      image_sub_   = it_.subscribe("/ardrone/bottom/image_raw", 1, &LineDetection::readImage, this);
+      navdata_sub_ = nh_.subscribe("/ardrone/navdata",100,&LineDetection::readHeight,this);
     }
 
     void readImage(const sensor_msgs::ImageConstPtr& msg)
@@ -52,6 +55,11 @@ using namespace cv;
       }
 
       findLines(cv_ptr);
+    }
+
+    void readHeight(const ardrone_autonomy::NavdataPtr& nav_msg){
+
+      altd = nav_msg->altd;
     }
     void findLines(cv_bridge::CvImagePtr& cv_ptr){
 
@@ -74,10 +82,11 @@ using namespace cv;
 
        // Calculate direction arrow
        direction_calc = DirectionCalculation(lines);
+       direction_calc.findErrors(Point2i(cv_ptr->image.cols/2,cv_ptr->image.rows/2));
        direction = direction_calc.getDirection();
        // Draw direction line
        ROS_INFO("Direction: start = (%d,%d), end = (%d,%d)",direction.getStart().x,direction.getStart().y,direction.getEnd().x,direction.getEnd().y);
-       line(cv_ptr->image,direction.getStart(),direction.getEnd(),Scalar(255,0,0),1,CV_AA);
+       line(cv_ptr->image,direction.getStart(),direction.getEnd(),Scalar(255,0,0),2,CV_AA);
 
       image_pub_.publish(cv_ptr->toImageMsg());
 
