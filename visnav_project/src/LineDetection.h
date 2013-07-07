@@ -25,6 +25,7 @@ using namespace ardrone_autonomy;
     vector<Vec4i> lines;
     DirectionCalculation direction_calc;
     DirectionArrow       direction;
+    visnav_project::LineDetectionMsg line_msg;
     int altd;
 
     ros::NodeHandle nh_;
@@ -32,6 +33,7 @@ using namespace ardrone_autonomy;
     image_transport::Subscriber image_sub_;
     image_transport::Publisher image_pub_;
     ros::Subscriber navdata_sub_;
+    ros::Publisher line_error_pub;
 
   public:
     LineDetection() : it_(nh_)
@@ -39,6 +41,7 @@ using namespace ardrone_autonomy;
       image_pub_   = it_.advertise("/detected_lines_img", 1);
       image_sub_   = it_.subscribe("/ardrone/bottom/image_raw", 1, &LineDetection::ImageCallback, this);
       navdata_sub_ = nh_.subscribe("/ardrone/navdata",100,&LineDetection::NavDataCallback,this);
+      line_error_pub = nh_.advertise<visnav_project::LineDetectionMsg>("line_detection",1);
     }
 
     void ImageCallback(const sensor_msgs::ImageConstPtr& msg)
@@ -83,13 +86,14 @@ using namespace ardrone_autonomy;
        // Calculate direction arrow
        if ((lines.size() > 0 )&& (lines.size() < 3)){
           direction_calc = DirectionCalculation(lines);
-          direction_calc.publishErrors(Point2i(cv_ptr->image.cols/2,cv_ptr->image.rows/2),altd);
+          line_msg = direction_calc.calcErrors(Point2i(cv_ptr->image.cols/2,cv_ptr->image.rows/2),altd);
           direction = direction_calc.getDirection();
           // Draw direction line
           ROS_INFO("Direction: start = (%d,%d), end = (%d,%d)",direction.getStart().x,direction.getStart().y,direction.getEnd().x,direction.getEnd().y);
           line(cv_ptr->image,direction.getStart(),direction.getEnd(),Scalar(255,0,0),2,CV_AA);
       }
       image_pub_.publish(cv_ptr->toImageMsg());
+      line_error_pub.publish(line_msg);
 
     }
   };

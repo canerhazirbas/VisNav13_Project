@@ -12,7 +12,7 @@ using namespace cv;
 #define FOCAL_LENGTH 700.490828918144
 #define EPSILON      0.0000001
 
-class DirectionArrow{
+ class DirectionArrow{
 
   private:
     Point2i start_;
@@ -79,7 +79,7 @@ class DirectionArrow{
     DirectionArrow getDirection(){
       return direction;
     }
-    void publishErrors(Point2i midPoint,int altd){
+    visnav_project::LineDetectionMsg calcErrors(Point2i midPoint,int altd){
 
       // http://mathworld.wolfram.com/Point-LineDistance2-Dimensional.html
       Point2i start_ = direction.getStart();
@@ -103,9 +103,11 @@ class DirectionArrow{
                                    (end_.y-start_.y)*(end_.y-start_.y));
 
       // global distance calculation x = d*Z / f; FOCAL_LENGTH normalized by size of image
-      double global_dist_to_line = distancetoLine * altd / (FOCAL_LENGTH * (midPoint.x *2 ));
+      line_msg.error_pitch = distancetoLine * altd / (FOCAL_LENGTH * (midPoint.x *2 ));
       ROS_INFO("Distance of midPoint to line : %.2f",distancetoLine);
-      ROS_INFO("Global Distance of midPoint to line : %.2f",global_dist_to_line);
+      ROS_INFO("Global Distance of midPoint to line : %.2f",line_msg.error_pitch);
+
+      return line_msg;
     }
   };
 
