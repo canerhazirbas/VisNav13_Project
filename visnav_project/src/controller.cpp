@@ -5,7 +5,7 @@
 #include <std_msgs/Bool.h>
 #include <geometry_msgs/Twist.h>
 #include <visualization_msgs/Marker.h>
-
+#include "DirectionCalculation.h"
 #include <visnav_project/State.h>
 #include <visnav_project/PidParameterConfig.h>
 
@@ -66,6 +66,9 @@ private:
 	ros::Subscriber sub_pose, sub_enabled;
 	ros::Publisher pub_vel;
 	ros::Publisher pub_cmd_marker;
+	DirectionArrow direction;
+
+
 
 	dynamic_reconfigure::Server<visnav_project::PidParameterConfig> reconfigure_server;
 	visnav_project::PidParameterConfig current_cfg;
@@ -116,6 +119,10 @@ public:
 		goal_yaw = yaw;
 	}
 
+	void setGoalDirection(DirectionArrow dir){
+		direction = dir;
+	}
+
 	void setEnabled(bool v) {
 		enabled = v;
 
@@ -153,7 +160,6 @@ public:
 
 	// control in xy and yaw
 	void calculateContolCommand(const ros::Time& t) {
-		// TODO: implement error computation and calls to pid controllers to get the commands
 		float e_x, e_y, e_yaw;
 		e_x = goal_x - state.x;
 		e_y = goal_y - state.y;
@@ -164,6 +170,7 @@ public:
 
 //		float u_x = pid_x.getCommand(t, e_x);
 //		float u_y = pid_y.getCommand(t, e_y);
+
 
 		float u_x = pid_x.getCommand(t, e_x,-state.vx);
 		float u_y = pid_y.getCommand(t, e_y,-state.vy);
@@ -176,6 +183,8 @@ public:
 
 		// normalize angular control command
 		twist.angular.z = atan2(sin(u_yaw), cos(u_yaw));
+
+
 	}
 
 	void sendCmdMarker(const ros::Time& t) {
