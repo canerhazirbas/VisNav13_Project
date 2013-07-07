@@ -8,6 +8,8 @@
 #include "DirectionCalculation.h"
 #include <visnav_project/State.h>
 #include <visnav_project/PidParameterConfig.h>
+#include <visnav_project/LineDetectionMsg.h>
+#include <visnav_project/AvoidObstaclesMsg.h>
 
 class PidController {
 private:
@@ -66,9 +68,8 @@ private:
 	ros::Subscriber sub_pose, sub_enabled;
 	ros::Publisher pub_vel;
 	ros::Publisher pub_cmd_marker;
-	DirectionArrow direction;
-
-
+	ros::Subscriber sub_lineDetection;
+	ros::Subscriber sub_avoidObstacle;
 
 	dynamic_reconfigure::Server<visnav_project::PidParameterConfig> reconfigure_server;
 	visnav_project::PidParameterConfig current_cfg;
@@ -78,7 +79,7 @@ private:
 
 	PidController pid_x, pid_y, pid_yaw;
 
-	bool enabled;
+	bool enabled, obstacle;
 	float goal_x, goal_y, goal_yaw;
 
 public:
@@ -101,6 +102,10 @@ public:
 		sub_pose = nh.subscribe<visnav_project::State>(
 				"/ardrone/filtered_pose", 1,
 				boost::bind(&ArdroneController::onFilteredPose, this, _1));
+		sub_lineDetection = nh.subscribe("/line_detection", 100, &ArdroneController::lineDetectionCB, this);
+		sub_avoidObstacle = nh.subscribe("/avoid_obstacle", 100, &ArdroneController::avoidObstacleCB, this);
+
+		obstacle = 0;
 	}
 
 	void setPidParameters(visnav_project::PidParameterConfig &config) {
@@ -119,9 +124,6 @@ public:
 		goal_yaw = yaw;
 	}
 
-	void setGoalDirection(DirectionArrow dir){
-		direction = dir;
-	}
 
 	void setEnabled(bool v) {
 		enabled = v;
@@ -132,13 +134,37 @@ public:
 		}
 	}
 
-	void onTimerTick(const ros::TimerEvent& e) {
-		calculateContolCommand(e.current_real);
+	void onTimerTick(const ros::TimerEvent& e, const visnav_project::LineDetectionMsg& ldmsg, const visnav_project::AvoidObstaclesMsg& aomsg) {
+		if(!obstacle){
+			lineDetectionController(ldmsg, e);
+		}
+		else{
+			avoidObstacleController(aomsg, e);
+		}
 
 		if (enabled)
 			pub_vel.publish(twist);
 
 		sendCmdMarker(e.current_real);
+	}
+
+	void lineDetectionController(const visnav_project::LineDetectionMsg& msg, const ros::TimerEvent& e){
+
+	}
+
+	void avoidObstacleController(const visnav_project::AvoidObstaclesMsg& msg, const ros::TimerEvent& e){
+
+	}
+
+	void lineDetectionCB(const visnav_project::LineDetectionMsg& msg){
+
+	}
+
+	void avoidObstacleCB(const visnav_project::AvoidObstaclesMsg& msg){
+		float threshold = 0;
+		if(msg.distance<threshold){
+			obstacle = 1;
+		}
 	}
 
 	void onConfig(visnav_project::PidParameterConfig& cfg,
@@ -252,8 +278,11 @@ int main(int argc, char **argv) {
 
 	ArdroneController controller(nh);
 
-	ros::Timer timer = nh.createTimer(ros::Duration(0.02),
-			boost::bind(&ArdroneController::onTimerTick, &controller, _1));
+
+//
+//	ros::Timer timer = nh.createTimer(ros::Duration(0.02),
+//			boost::bind(&ArdroneController::onTimerTick, &controller, _1));
+
 
 	ros::spin();
 
