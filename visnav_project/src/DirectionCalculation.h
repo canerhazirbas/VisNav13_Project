@@ -9,7 +9,10 @@
 using namespace std;
 using namespace cv;
 
-  class DirectionArrow{
+#define FOCAL_LENGTH 700.490828918144
+#define EPSILON      0.0000001
+
+class DirectionArrow{
 
   private:
     Point2i start_;
@@ -76,22 +79,33 @@ using namespace cv;
     DirectionArrow getDirection(){
       return direction;
     }
-    void findErrors(Point2i midPoint){
+    void publishErrors(Point2i midPoint,int altd){
 
       // http://mathworld.wolfram.com/Point-LineDistance2-Dimensional.html
+      Point2i start_ = direction.getStart();
+      Point2i end_   = direction.getEnd();
 
-      double slope = (double)(midLine[3]-midLine[1])/(midLine[2]-midLine[0]);
-      line_msg.errorYaw = atan(slope);
+      if ((end_.x - start_.x) != 0){
+         double slope = (double)((end_.y - start_.y) / (end_.x - start_.x));
+         line_msg.error_yaw = atan(slope);
+      }
+      else
+        line_msg.error_yaw = 1.571 ; // 90 degrees in radian
 
+
+      ROS_INFO("Angle of line : %.2f",line_msg.error_yaw);
       // distance of mid-pixel to the line
-      double distancetoLine = abs( (double)((midLine[2]-midLine[0]) * (midLine[1] - midPoint.y)) -
-                                   ((midLine[0]-midPoint.x)*(midLine[3]-midLine[1]))
+      double distancetoLine = abs( (double)((end_.x - start_.x) * (start_.y - midPoint.y)) -
+                                   ((start_.x-midPoint.x)*(end_.y-start_.y))
                                  )
                               /
-                              sqrt((double)(midLine[2]-midLine[0])*(midLine[2]-midLine[0])+
-                                   (midLine[3]-midLine[1])*(midLine[3]-midLine[1]));
+                              sqrt((double)(end_.x-start_.x)*(end_.x-start_.x)+
+                                   (end_.y-start_.y)*(end_.y-start_.y));
 
-
+      // global distance calculation x = d*Z / f; FOCAL_LENGTH normalized by size of image
+      double global_dist_to_line = distancetoLine * altd / (FOCAL_LENGTH * (midPoint.x *2 ));
+      ROS_INFO("Distance of midPoint to line : %.2f",distancetoLine);
+      ROS_INFO("Global Distance of midPoint to line : %.2f",global_dist_to_line);
     }
   };
 
