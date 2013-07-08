@@ -45,7 +45,6 @@ public:
 
 	float getCommand(const ros::Time& t, float error, float derror) {
 		ros::Duration diff = t - t_old;
-		// TODO: implement PID control law
 		ierror = ierror + diff.toSec() * error;
 
 		float u; // Control input
@@ -76,11 +75,14 @@ private:
 
 	geometry_msgs::Twist twist;
 	visnav_project::State state;
+	visnav_project::LineDetectionMsg ld;
+	visnav_project::AvoidObstaclesMsg ao;
 
 	PidController pid_x, pid_y, pid_yaw;
 
 	bool enabled, obstacle;
 	float goal_x, goal_y, goal_yaw;
+	int iterator;
 
 public:
 	ArdroneController(ros::NodeHandle& nh) :
@@ -94,16 +96,17 @@ public:
 
 		twist.linear.x = twist.linear.y = twist.linear.z = 0;
 		twist.angular.x = twist.angular.y = twist.angular.z = 0;
-		setGoalPose(0, 0, 0);
+//		setGoalPose(0, 0, 0);
 
 		sub_enabled = nh.subscribe<std_msgs::Bool>("/ardrone/enable_controller",
 				1,
 				boost::bind(&ArdroneController::onEnableController, this, _1));
-		sub_pose = nh.subscribe<visnav_project::State>(
-				"/ardrone/filtered_pose", 1,
-				boost::bind(&ArdroneController::onFilteredPose, this, _1));
-		sub_lineDetection = nh.subscribe("/line_detection", 100, &ArdroneController::lineDetectionCB, this);
-		sub_avoidObstacle = nh.subscribe("/avoid_obstacle", 100, &ArdroneController::avoidObstacleCB, this);
+		sub_pose = nh.subscribe<visnav_project::State>("/ardrone/filtered_pose",
+				1, boost::bind(&ArdroneController::onFilteredPose, this, _1));
+		sub_lineDetection = nh.subscribe("/line_detection", 100,
+				&ArdroneController::lineDetectionCB, this);
+		sub_avoidObstacle = nh.subscribe("/avoid_obstacle", 100,
+				&ArdroneController::avoidObstacleCB, this);
 
 		obstacle = 0;
 	}
@@ -118,12 +121,11 @@ public:
 		pid_yaw.c_derivative = config.c_deriv_yaw;
 	}
 
-	void setGoalPose(float x, float y, float yaw) {
-		goal_x = x;
-		goal_y = y;
-		goal_yaw = yaw;
-	}
-
+//	void setGoalPose(float x, float y, float yaw) {
+//		goal_x = x;
+//		goal_y = y;
+//		goal_yaw = yaw;
+//	}
 
 	void setEnabled(bool v) {
 		enabled = v;
@@ -134,12 +136,11 @@ public:
 		}
 	}
 
-	void onTimerTick(const ros::TimerEvent& e, const visnav_project::LineDetectionMsg& ldmsg, const visnav_project::AvoidObstaclesMsg& aomsg) {
-		if(!obstacle){
-			lineDetectionController(ldmsg, e);
-		}
-		else{
-			avoidObstacleController(aomsg, e);
+	void onTimerTick(const ros::TimerEvent& e) {
+		if (!obstacle) {
+			lineDetectionController(e.current_real);
+		} else {
+			avoidObstacleController(e.current_real);
 		}
 
 		if (enabled)
@@ -148,27 +149,60 @@ public:
 		sendCmdMarker(e.current_real);
 	}
 
-	void lineDetectionController(const visnav_project::LineDetectionMsg& msg, const ros::TimerEvent& e){
+	void lineDetectionController(const ros::Time& t) {
+		float u_x = 0.1;
+//		float e_x, e_y, e_yaw;
+//		// use this yaw to rotate commands from global to local frame
+//		float yaw = -(state.yaw + M_PI_2);
+
+		float u_y = pid_y.getCommand(t, ld.error_pitch);
+
+
+		twist.linear.x = u_x;
+		twist.linear.y = u_y;
+
+		float u_yaw = pid_yaw.getCommand(t, ld.error_yaw);
+
+		// normalize angular control command
+		twist.angular.z = atan2(sin(u_yaw), cos(u_yaw));
+	}
+
+	void avoidObstacleController(const ros::Time& t) {
 
 	}
 
-	void avoidObstacleController(const visnav_project::AvoidObstaclesMsg& msg, const ros::TimerEvent& e){
+	void lineDetectionCB(const visnav_project::LineDetectionMsg::ConstPtr& ld_msg) {
+		float threshold_error_yaw = 0;
+		int iteratorMax = 10;
+
+		ld = *ld_msg;
+		ROS_INFO("ld.error_pitch :%f", ld.error_pitch);
+
+
+		//if the yaw error is continuously 10 times smaller than the threshold, we assume that the drone is now following the line.
+		if (iterator < iteratorMax) {
+			if (ld.error_yaw < threshold_error_yaw) {
+				iterator++;
+			} else {
+				iterator = 0;
+			}
+		} else {
+//			ros::service::call("/ardrone/togglecam", ardrone_autonomy&); //change into the front camera
+			iterator = 0;
+		}
 
 	}
 
-	void lineDetectionCB(const visnav_project::LineDetectionMsg& msg){
-
-	}
-
-	void avoidObstacleCB(const visnav_project::AvoidObstaclesMsg& msg){
+	void avoidObstacleCB(const visnav_project::AvoidObstaclesMsg::ConstPtr& ao_msg) {
+		ao = *ao_msg;
 		float threshold = 0;
-		if(msg.distance<threshold){
+		if (ao.distance < threshold) {
 			obstacle = 1;
+//			ros::service::call("/ardrone/togglecam"); //change into the down camera
 		}
 	}
 
-	void onConfig(visnav_project::PidParameterConfig& cfg,
-			uint32_t level) {
+	void onConfig(visnav_project::PidParameterConfig& cfg, uint32_t level) {
 		current_cfg = cfg;
 		setEnabled(cfg.enable);
 		setPidParameters(cfg);
@@ -197,10 +231,8 @@ public:
 //		float u_x = pid_x.getCommand(t, e_x);
 //		float u_y = pid_y.getCommand(t, e_y);
 
-
-		float u_x = pid_x.getCommand(t, e_x,-state.vx);
-		float u_y = pid_y.getCommand(t, e_y,-state.vy);
-
+		float u_x = pid_x.getCommand(t, e_x, -state.vx);
+		float u_y = pid_y.getCommand(t, e_y, -state.vy);
 
 		twist.linear.x = cos(yaw) * u_x - sin(yaw) * u_y;
 		twist.linear.y = sin(yaw) * u_x + cos(yaw) * u_y;
@@ -209,7 +241,6 @@ public:
 
 		// normalize angular control command
 		twist.angular.z = atan2(sin(u_yaw), cos(u_yaw));
-
 
 	}
 
@@ -279,14 +310,11 @@ int main(int argc, char **argv) {
 	ArdroneController controller(nh);
 
 
-//
-//	ros::Timer timer = nh.createTimer(ros::Duration(0.02),
-//			boost::bind(&ArdroneController::onTimerTick, &controller, _1));
-
+	ros::Timer timer = nh.createTimer(ros::Duration(0.02),
+			boost::bind(&ArdroneController::onTimerTick, &controller, _1));
 
 	ros::spin();
 
 	return 0;
 }
-
 
