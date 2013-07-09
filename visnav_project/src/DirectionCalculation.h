@@ -5,6 +5,9 @@
 #include "visnav_project/LineDetectionMsg.h"
 #include <highgui.h>
 #include <cv.h>
+#include <math.h>
+
+#define PI 3.14159265
 
 using namespace std;
 using namespace cv;
@@ -85,15 +88,13 @@ using namespace cv;
       Point2i start_ = direction.getStart();
       Point2i end_   = direction.getEnd();
 
-      if ((end_.x - start_.x) != 0){
-         double slope = (double)((end_.y - start_.y) / (end_.x - start_.x));
+      if ((double)(end_.y - start_.y) != 0){
+         double slope = ((double)(end_.x - start_.x) / (double)(end_.y - start_.y));
          line_msg.error_yaw = atan(slope);
       }
       else
-        line_msg.error_yaw = 1.571 ; // 90 degrees in radian
+        line_msg.error_yaw = 0	 ; // 90 degrees in radian
 
-
-      ROS_INFO("Angle of line : %.2f",line_msg.error_yaw);
       // distance of mid-pixel to the line
       double distancetoLine = abs( (double)((end_.x - start_.x) * (start_.y - midPoint.y)) -
                                    ((start_.x-midPoint.x)*(end_.y-start_.y))
@@ -103,7 +104,7 @@ using namespace cv;
                                    (end_.y-start_.y)*(end_.y-start_.y));
 
       // global distance calculation x = d*Z / f; FOCAL_LENGTH normalized by size of image
-      line_msg.error_pitch = distancetoLine * altd / (FOCAL_LENGTH * (midPoint.x *2 ));
+      line_msg.error_pitch = (double)distancetoLine * altd / (FOCAL_LENGTH * (midPoint.x *2 ));
       ROS_INFO("Distance of midPoint to line : %.2f",distancetoLine);
       ROS_INFO("Global Distance of midPoint to line : %.2f",line_msg.error_pitch);
 

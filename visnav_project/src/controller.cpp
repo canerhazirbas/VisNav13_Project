@@ -150,7 +150,7 @@ public:
 	}
 
 	void lineDetectionController(const ros::Time& t) {
-		float u_x = 0.1;
+		float u_x = 0.05;
 //		float e_x, e_y, e_yaw;
 //		// use this yaw to rotate commands from global to local frame
 //		float yaw = -(state.yaw + M_PI_2);
@@ -176,7 +176,8 @@ public:
 		int iteratorMax = 10;
 
 		ld = *ld_msg;
-		ROS_INFO("ld.error_pitch :%f", ld.error_pitch);
+	    ROS_INFO("distance of line : %.2f",ld.error_pitch);
+	    ROS_INFO("angle of line : %.2f",ld.error_yaw);
 
 
 		//if the yaw error is continuously 10 times smaller than the threshold, we assume that the drone is now following the line.

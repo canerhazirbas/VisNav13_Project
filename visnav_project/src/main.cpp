@@ -216,7 +216,7 @@ struct Ardrone_localizer
 
     // pose of Marker in global coordinates
     global_pose_4x4_95 = Vector3f(0, 0, 0); // in meters
-    global_pose_4x4_1 = Vector3f(0.04, 2.12, 0);
+    global_pose_4x4_1 = Vector3f(0, 2.12, 0);
 
     sub_tf = nh_.subscribe("/tf", 100, &Ardrone_localizer::tfCB, this);
     sub_nav = nh_.subscribe("/ardrone/navdata", 100, &Ardrone_localizer::navCB, this);
