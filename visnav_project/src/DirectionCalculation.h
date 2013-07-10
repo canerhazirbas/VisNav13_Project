@@ -13,7 +13,8 @@ using namespace std;
 using namespace cv;
 
 #define FOCAL_LENGTH 700.490828918144
-#define EPSILON      0.0000001
+#define LEFT          1
+#define RIGHT        -1
 
  class DirectedLine{
 
@@ -108,6 +109,26 @@ using namespace cv;
       ROS_INFO("Slope_X : %.2f ; Distance_L : %.2f pixel; Distance_G : %.4f meters",line_msg.error_yaw,distancetoLine,line_msg.error_pitch);
       return line_msg;
     }
+    // Find if midPoint lies on left-right of line
+/*    int findDistanceDirection(DirectedLine Dl, Point2i midPoint){
+
+      Point2i start_ = Dl.getStart();
+      Point2i end_   = Dl.getEnd();
+
+      if((midPoint.x < start_.x) && ((midPoint.x < end_.x)))
+          return  LEFT;
+
+      if((midPoint.x > start_.x) && ((midPoint.x > end_.x)))
+          return  RIGHT;
+
+      else if((midPoint.x < start_.x) && ((midPoint.x > end_.x)))
+        if(midPoint.y < end_.y)
+            return LEFT;
+        else
+            return RIGHT;
+
+    }
+*/
   };
 
 
