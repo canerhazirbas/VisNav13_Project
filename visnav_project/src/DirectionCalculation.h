@@ -15,7 +15,7 @@ using namespace cv;
 #define FOCAL_LENGTH 700.490828918144
 #define EPSILON      0.0000001
 
- class DirectionArrow{
+ class DirectedLine{
 
   private:
     Point2i start_;
@@ -23,8 +23,8 @@ using namespace cv;
 
   public:
 
-    DirectionArrow(){}
-    DirectionArrow(Vec4i v){
+    DirectedLine(){}
+    DirectedLine(Vec4i v){
       if(v[1] < v[3])
         {
           start_ = Point2i(v[2],v[3]);
@@ -51,9 +51,9 @@ using namespace cv;
   class DirectionCalculation{
 
   private:
-    DirectionArrow direction;
+    DirectedLine direction;
     vector<Vec4i> lines;
-    Vec4i midLine;
+
     visnav_project::LineDetectionMsg line_msg;
 
   public:
@@ -61,25 +61,24 @@ using namespace cv;
     DirectionCalculation(){}
     DirectionCalculation(vector<Vec4i> lines)
     {
-      if(lines.size()==1)
-        direction = DirectionArrow(lines[0]);
+      Vec4i midLine(1);
+      vector<DirectedLine> directed_lines(lines.size());
 
-      else if (lines.size() ==2){
-
-          DirectionArrow first(lines[0]);
-          DirectionArrow second(lines[1]);
-          midLine[0] = (first.getStart().x + second.getStart().x) / 2;
-          midLine[1] = (first.getStart().y + second.getStart().y) / 2;
-          midLine[2] = (first.getEnd().x + second.getEnd().x) / 2;
-          midLine[3] = (first.getEnd().y + second.getEnd().y) / 2;
-          direction = DirectionArrow(midLine);
-          // 0-1 start, 2-3 end x,y
+      for(unsigned int i = 0; i < lines.size(); i++)
+      {
+          directed_lines[i] =DirectedLine(lines[i]);
+          midLine[0] += directed_lines[i].getStart().x;
+          midLine[1] += directed_lines[i].getStart().y;
+          midLine[2] += directed_lines[i].getEnd().x;
+          midLine[3] += directed_lines[i].getEnd().y;
       }
-      else
-        // Dont know yet in case we have multi-detected(>2) lines
-        return;
+      midLine[0] /= lines.size();
+      midLine[1] /= lines.size();
+      midLine[2] /= lines.size();
+      midLine[3] /= lines.size();
+      direction = DirectedLine(midLine);
     }
-    DirectionArrow getDirection(){
+    DirectedLine getDirection(){
       return direction;
     }
     visnav_project::LineDetectionMsg calcErrors(Point2i midPoint,int altd){
@@ -87,9 +86,10 @@ using namespace cv;
       // http://mathworld.wolfram.com/Point-LineDistance2-Dimensional.html
       Point2i start_ = direction.getStart();
       Point2i end_   = direction.getEnd();
+      double slope;
 
       if ((double)(end_.y - start_.y) != 0){
-         double slope = ((double)(end_.x - start_.x) / (double)(end_.y - start_.y));
+         slope = ((double)(end_.x - start_.x) / (double)(end_.y - start_.y));
          line_msg.error_yaw = atan(slope);
       }
       else
@@ -103,11 +103,9 @@ using namespace cv;
                               sqrt((double)(end_.x-start_.x)*(end_.x-start_.x)+
                                    (end_.y-start_.y)*(end_.y-start_.y));
 
-      // global distance calculation x = d*Z / f; FOCAL_LENGTH normalized by size of image
-      line_msg.error_pitch = (double)distancetoLine * altd / (FOCAL_LENGTH * (midPoint.x *2 ));
-      ROS_INFO("Distance of midPoint to line : %.2f",distancetoLine);
-      ROS_INFO("Global Distance of midPoint to line : %.2f",line_msg.error_pitch);
-
+      // global distance calculation x = d*Z / f; //FOCAL_LENGTH normalized by size of image
+      line_msg.error_pitch = (double)(distancetoLine * (altd*0.001) / FOCAL_LENGTH) * (midPoint.x *2) * 0.001;
+      ROS_INFO("Slope_X : %.2f ; Distance_L : %.2f pixel; Distance_G : %.4f meters",line_msg.error_yaw,distancetoLine,line_msg.error_pitch);
       return line_msg;
     }
   };

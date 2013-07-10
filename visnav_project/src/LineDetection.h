@@ -22,9 +22,9 @@ using namespace ardrone_autonomy;
   class LineDetection{
 
   private:
-    vector<Vec4i> lines;
+
     DirectionCalculation direction_calc;
-    DirectionArrow       direction;
+    DirectedLine       direction;
     visnav_project::LineDetectionMsg line_msg;
     int altd;
 
@@ -67,6 +67,7 @@ using namespace ardrone_autonomy;
     void findLines(cv_bridge::CvImagePtr& cv_ptr){
 
       Mat image,image_edges;
+      vector<Vec4i> lines;
       //cvtColor(cv_ptr->image,image,CV_BGR2HSV);
       inRange(cv_ptr->image,Scalar(200,200,200),Scalar(255,255,255),image);
       Canny(image, image_edges, 50, 200, 3);
@@ -75,21 +76,22 @@ using namespace ardrone_autonomy;
       /* There are two possible hough methods, I used the probabilistic one */
 
        HoughLinesP(image_edges, lines, 1, CV_PI/180, 50, 50, 10 );
-       ROS_INFO("Number of detected lines: %ld",lines.size());
 
        for( size_t i = 0; i < lines.size(); i++ )
        {
          Vec4i l = lines[i];
-         line( cv_ptr->image, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,0,255), 1, CV_AA);
+         line( cv_ptr->image, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,0,255), 2, CV_AA);
        }
 
        // Calculate direction arrow
-       if ((lines.size() > 0 )&& (lines.size() < 3)){
+       if (!lines.empty()){
+
+          //ROS_INFO("Number of detected lines: %ld",lines.size());
           direction_calc = DirectionCalculation(lines);
           line_msg = direction_calc.calcErrors(Point2i(cv_ptr->image.cols/2,cv_ptr->image.rows/2),altd);
           direction = direction_calc.getDirection();
           // Draw direction line
-          ROS_INFO("Direction: start = (%d,%d), end = (%d,%d)",direction.getStart().x,direction.getStart().y,direction.getEnd().x,direction.getEnd().y);
+          //ROS_INFO("Direction: start = (%d,%d), end = (%d,%d)",direction.getStart().x,direction.getStart().y,direction.getEnd().x,direction.getEnd().y);
           line(cv_ptr->image,direction.getStart(),direction.getEnd(),Scalar(255,0,0),2,CV_AA);
       }
       image_pub_.publish(cv_ptr->toImageMsg());
