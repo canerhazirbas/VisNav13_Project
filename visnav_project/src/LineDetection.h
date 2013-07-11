@@ -95,6 +95,10 @@ using namespace ardrone_autonomy;
           //ROS_INFO("Direction: start = (%d,%d), end = (%d,%d)",direction.getStart().x,direction.getStart().y,direction.getEnd().x,direction.getEnd().y);
           line(cv_ptr->image,direction.getStart(),direction.getEnd(),Scalar(255,0,0),2,CV_AA);
       }
+       else{
+         line_msg.error_pitch = 0;
+         line_msg.error_yaw   = 0;
+       }
        circle(cv_ptr->image,Point2i(cv_ptr->image.cols/2,cv_ptr->image.rows/2),3,Scalar(0,255,0),1,CV_AA,0);
       image_pub_.publish(cv_ptr->toImageMsg());
       line_error_pub.publish(line_msg);
