@@ -11,6 +11,7 @@
 #include <visnav_project/PidParameterConfig.h>
 #include <visnav_project/LineDetectionMsg.h>
 #include <visnav_project/AvoidObstaclesMsg.h>
+#include "std_srvs/Empty.h"
 
 class PidController {
 private:
@@ -71,6 +72,8 @@ private:
 	ros::Publisher pub_land, pub_takeoff;
 	ros::Subscriber sub_lineDetection;
 	ros::Subscriber sub_avoidObstacle;
+	ros::ServiceClient srv_cl_cam;
+	std_srvs::Empty srv_empty;
 
 	dynamic_reconfigure::Server<visnav_project::PidParameterConfig> reconfigure_server;
 	visnav_project::PidParameterConfig current_cfg;
@@ -82,7 +85,7 @@ private:
 
 	PidController pid_x, pid_y, pid_yaw;
 
-	bool enabled, obstacle, is_flying, finished;
+	bool enabled, obstacle, get_direction;
 	float goal_x, goal_y, goal_yaw;
 	int iterator;
 
@@ -114,8 +117,7 @@ public:
 				&ArdroneController::avoidObstacleCB, this);
 
 		obstacle = FALSE;
-		is_flying = FALSE;
-		finished = FALSE;
+		get_direction = FALSE;
 	}
 
 	void setPidParameters(visnav_project::PidParameterConfig &config) {
@@ -150,22 +152,18 @@ public:
 
 		if (!obstacle) {
 			lineDetectionController(e.current_real);
-		}else if (obstacle){
+		} else if (obstacle) {
 			avoidObstacleController(e.current_real);
 		}
 
 		if (enabled)
 			pub_vel.publish(twist);
 
-
 		sendCmdMarker(e.current_real);
 	}
 
 	void lineDetectionController(const ros::Time& t) {
 		float u_x = 0.05;
-//		float e_x, e_y, e_yaw;
-//		// use this yaw to rotate commands from global to local frame
-//		float yaw = -(state.yaw + M_PI_2);
 
 		float u_y = pid_y.getCommand(t, ld.error_pitch);
 
@@ -184,12 +182,10 @@ public:
 
 	void lineDetectionCB(
 			const visnav_project::LineDetectionMsg::ConstPtr& ld_msg) {
-		float threshold_error_yaw = 0;
+		float threshold_error_yaw = 0.1;
 		int iteratorMax = 10;
 
 		ld = *ld_msg;
-//		ROS_INFO("distance of line : %.2f", ld.error_pitch);
-//		ROS_INFO("angle of line : %.2f", ld.error_yaw);
 
 		//if the yaw error is continuously 10 times smaller than the threshold, we assume that the drone is now following the line.
 		if (iterator < iteratorMax) {
@@ -199,7 +195,10 @@ public:
 				iterator = 0;
 			}
 		} else {
-//			ros::service::call("/ardrone/togglecam", ardrone_autonomy&); //change into the front camera
+			ROS_INFO("Toggle the Camera!");
+			if (!srv_cl_cam.call(srv_empty)) {
+				ROS_INFO("Failed to toggle Camera");
+			}
 			iterator = 0;
 		}
 
@@ -208,10 +207,14 @@ public:
 	void avoidObstacleCB(
 			const visnav_project::AvoidObstaclesMsg::ConstPtr& ao_msg) {
 		ao = *ao_msg;
-		float threshold = 0;
+		float threshold = 0.2;
+		ROS_INFO("distance: %f",ao.distance);
 		if (ao.distance < threshold) {
+			ROS_INFO("Toggle the Camera!");
+			if (!srv_cl_cam.call(srv_empty)) {
+				ROS_INFO("Failed to toggle Camera");
+			}
 			obstacle = 1;
-//			ros::service::call("/ardrone/togglecam"); //change into the down camera
 		}
 	}
 
