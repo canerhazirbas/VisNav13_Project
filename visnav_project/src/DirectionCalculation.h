@@ -13,8 +13,8 @@ using namespace std;
 using namespace cv;
 
 #define FOCAL_LENGTH 700.490828918144
-#define LEFT          1
-#define RIGHT        -1
+#define LEFT         -1
+#define RIGHT        1
 
  class DirectedLine{
 
