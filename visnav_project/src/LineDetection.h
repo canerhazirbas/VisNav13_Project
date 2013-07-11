@@ -81,6 +81,7 @@ using namespace ardrone_autonomy;
        {
          Vec4i l = lines[i];
          line( cv_ptr->image, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,0,255), 2, CV_AA);
+
        }
 
        // Calculate direction arrow
@@ -94,6 +95,7 @@ using namespace ardrone_autonomy;
           //ROS_INFO("Direction: start = (%d,%d), end = (%d,%d)",direction.getStart().x,direction.getStart().y,direction.getEnd().x,direction.getEnd().y);
           line(cv_ptr->image,direction.getStart(),direction.getEnd(),Scalar(255,0,0),2,CV_AA);
       }
+       circle(cv_ptr->image,Point2i(cv_ptr->image.cols/2,cv_ptr->image.rows/2),3,Scalar(0,255,0),1,CV_AA,0);
       image_pub_.publish(cv_ptr->toImageMsg());
       line_error_pub.publish(line_msg);
 

@@ -105,30 +105,48 @@ using namespace cv;
                                    (end_.y-start_.y)*(end_.y-start_.y));
 
       // global distance calculation x = d*Z / f; //FOCAL_LENGTH normalized by size of image
-      line_msg.error_pitch = (double)(distancetoLine * (altd*0.001) / FOCAL_LENGTH) * (midPoint.x *2) * 0.001;
+      line_msg.error_pitch = findDistanceDirection (direction,midPoint) *
+                             (double)(distancetoLine * (altd*0.00001) / FOCAL_LENGTH) * (midPoint.x *2);
       ROS_INFO("Slope_X : %.2f ; Distance_L : %.2f pixel; Distance_G : %.4f meters",line_msg.error_yaw,distancetoLine,line_msg.error_pitch);
       return line_msg;
     }
     // Find if midPoint lies on left-right of line
-/*    int findDistanceDirection(DirectedLine Dl, Point2i midPoint){
+    int findDistanceDirection(DirectedLine Dl, Point2i midPoint){
 
       Point2i start_ = Dl.getStart();
       Point2i end_   = Dl.getEnd();
+      double slope, b ; // y = slope*x +b
 
-      if((midPoint.x < start_.x) && ((midPoint.x < end_.x)))
-          return  LEFT;
+      ROS_INFO(" (%d, %d) (%d, %d) --- (%d, %d)",start_.x,-start_.y,end_.x,-end_.y,midPoint.x,-midPoint.y);
+      if ((double)(end_.x - start_.x) != 0){
+         slope = ((double)(-end_.y + start_.y) / (double)(end_.x - start_.x));
+         b     = ((double)(-start_.y*end_.x )- (-end_.y * start_.x)) / ((double)(end_.x - start_.x));
 
-      if((midPoint.x > start_.x) && ((midPoint.x > end_.x)))
-          return  RIGHT;
+         double y = slope * midPoint.x + b;
 
-      else if((midPoint.x < start_.x) && ((midPoint.x > end_.x)))
-        if(midPoint.y < end_.y)
-            return LEFT;
+         ROS_INFO(" K = %.2f slope= %.2f ---> y= %.2f ",slope,b,y);
+         if (slope > 0){
+           if (y < -midPoint.y)
+             return LEFT;
+           else
+             return RIGHT;
+           }
+         else
+           if (y < -midPoint.y)
+             return RIGHT;
+           else
+             return LEFT;
+
+      }
+      else
+        if  (midPoint.x < end_.x) // line paralel to y axis
+          return LEFT;
         else
-            return RIGHT;
+          return RIGHT;
+
 
     }
-*/
+
   };
 
 
