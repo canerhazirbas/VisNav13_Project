@@ -3,6 +3,7 @@
 #include <math.h>
 
 #include <std_msgs/Bool.h>
+#include <std_msgs/Empty.h>
 #include <geometry_msgs/Twist.h>
 #include <visualization_msgs/Marker.h>
 #include "DirectionCalculation.h"
@@ -67,6 +68,7 @@ private:
 	ros::Subscriber sub_pose, sub_enabled;
 	ros::Publisher pub_vel;
 	ros::Publisher pub_cmd_marker;
+	ros::Publisher pub_land, pub_takeoff;
 	ros::Subscriber sub_lineDetection;
 	ros::Subscriber sub_avoidObstacle;
 
@@ -80,13 +82,16 @@ private:
 
 	PidController pid_x, pid_y, pid_yaw;
 
-	bool enabled, obstacle;
+	bool enabled, obstacle, is_flying, finished;
 	float goal_x, goal_y, goal_yaw;
 	int iterator;
 
 public:
 	ArdroneController(ros::NodeHandle& nh) :
 			nh(nh), reconfigure_server(), enabled(false) {
+		pub_takeoff = nh.advertise<std_msgs::Empty>("/ardrone/takeoff", 1);
+		pub_land = nh.advertise<std_msgs::Empty>("/ardrone/land", 1);
+
 		pub_vel = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
 		pub_cmd_marker = nh.advertise<visualization_msgs::Marker>(
 				"visualization_marker", 10);
@@ -108,7 +113,9 @@ public:
 		sub_avoidObstacle = nh.subscribe("/avoid_obstacle", 100,
 				&ArdroneController::avoidObstacleCB, this);
 
-		obstacle = 0;
+		obstacle = FALSE;
+		is_flying = FALSE;
+		finished = FALSE;
 	}
 
 	void setPidParameters(visnav_project::PidParameterConfig &config) {
@@ -131,20 +138,25 @@ public:
 		enabled = v;
 
 		if (!enabled) {
-			pid_x.reset();
+			pid_y.reset();
 			pid_yaw.reset();
 		}
 	}
 
 	void onTimerTick(const ros::TimerEvent& e) {
+
+		//take off
+//		pub_takeoff.publish(std_msgs::Empty());
+
 		if (!obstacle) {
 			lineDetectionController(e.current_real);
-		} else {
+		}else if (obstacle){
 			avoidObstacleController(e.current_real);
 		}
 
 		if (enabled)
 			pub_vel.publish(twist);
+
 
 		sendCmdMarker(e.current_real);
 	}
@@ -156,7 +168,6 @@ public:
 //		float yaw = -(state.yaw + M_PI_2);
 
 		float u_y = pid_y.getCommand(t, ld.error_pitch);
-
 
 		twist.linear.x = u_x;
 		twist.linear.y = u_y;
@@ -171,14 +182,14 @@ public:
 
 	}
 
-	void lineDetectionCB(const visnav_project::LineDetectionMsg::ConstPtr& ld_msg) {
+	void lineDetectionCB(
+			const visnav_project::LineDetectionMsg::ConstPtr& ld_msg) {
 		float threshold_error_yaw = 0;
 		int iteratorMax = 10;
 
 		ld = *ld_msg;
-	    ROS_INFO("distance of line : %.2f",ld.error_pitch);
-	    ROS_INFO("angle of line : %.2f",ld.error_yaw);
-
+//		ROS_INFO("distance of line : %.2f", ld.error_pitch);
+//		ROS_INFO("angle of line : %.2f", ld.error_yaw);
 
 		//if the yaw error is continuously 10 times smaller than the threshold, we assume that the drone is now following the line.
 		if (iterator < iteratorMax) {
@@ -194,7 +205,8 @@ public:
 
 	}
 
-	void avoidObstacleCB(const visnav_project::AvoidObstaclesMsg::ConstPtr& ao_msg) {
+	void avoidObstacleCB(
+			const visnav_project::AvoidObstaclesMsg::ConstPtr& ao_msg) {
 		ao = *ao_msg;
 		float threshold = 0;
 		if (ao.distance < threshold) {
@@ -309,7 +321,6 @@ int main(int argc, char **argv) {
 	ros::NodeHandle nh;
 
 	ArdroneController controller(nh);
-
 
 	ros::Timer timer = nh.createTimer(ros::Duration(0.02),
 			boost::bind(&ArdroneController::onTimerTick, &controller, _1));
