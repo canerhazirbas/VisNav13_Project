@@ -13,6 +13,7 @@
 #include <visnav_project/EKF.h>
 
 #include "LineDetection.h"
+#include "visnav_project/AvoidObstaclesMsg.h"
 
 using namespace std;
 using namespace Eigen;
@@ -26,6 +27,7 @@ struct Ardrone_localizer
   ros::Subscriber sub_cmd;
   ros::Subscriber sub_tf;
   ros::Publisher pub_pose;
+  ros::Publisher pub_obstacle;
   ros::Time lastPublished;
 
   // pose of markers in world frame
@@ -67,9 +69,18 @@ struct Ardrone_localizer
             tf::Quaternion(msg->transforms[i].transform.rotation.x, msg->transforms[i].transform.rotation.y, msg->transforms[i].transform.rotation.z, msg->transforms[i].transform.rotation.w));
         tf::Vector3 t = tf::Vector3(msg->transforms[i].transform.translation.x, msg->transforms[i].transform.translation.y, msg->transforms[i].transform.translation.z);
 
+        // Publish Obstacle Distance
+        visnav_project::AvoidObstaclesMsg  distance_obstacle_msg;
+        distance_obstacle_msg.distance =sqrt(t.getX()*t.getX()+ t.getY()*t.getY()+t.getZ()*t.getZ());
+        pub_obstacle = nh_.advertise<visnav_project::AvoidObstaclesMsg>("avoid_obstacle",1);
+        pub_obstacle.publish(distance_obstacle_msg);
+
+
         // get roll, pitch from observation
         double roll, pitch, yaw;
         R.getEulerYPR(yaw, pitch, roll);
+
+
 
         // "remove" roll, pitch.
         tf::Matrix3x3 Ry;
