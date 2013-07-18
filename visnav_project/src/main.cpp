@@ -57,10 +57,12 @@ struct Ardrone_localizer
   void tfCB(const tf::tfMessageConstPtr msg)
   {
 
+	visnav_project::AvoidObstaclesMsg  distance_obstacle_msg;
+	distance_obstacle_msg.distance = -1;
     // get observations and correct
     for (int i = 0; i < msg->transforms.size(); i++)
     {
-      if (msg->transforms[i].header.frame_id == "/ardrone_base_frontcam" && (msg->transforms[i].child_frame_id == "/4x4_1" || msg->transforms[i].child_frame_id == "/4x4_95"))
+      if (msg->transforms[i].header.frame_id == "/ardrone_base_frontcam" && (msg->transforms[i].child_frame_id == "/4x4_95" ))
       {
 
         // make rotation matrix
@@ -70,10 +72,10 @@ struct Ardrone_localizer
         tf::Vector3 t = tf::Vector3(msg->transforms[i].transform.translation.x, msg->transforms[i].transform.translation.y, msg->transforms[i].transform.translation.z);
 
         // Publish Obstacle Distance
-        visnav_project::AvoidObstaclesMsg  distance_obstacle_msg;
+
         distance_obstacle_msg.distance =sqrt(t.getX()*t.getX()+ t.getY()*t.getY()+t.getZ()*t.getZ());
         pub_obstacle = nh_.advertise<visnav_project::AvoidObstaclesMsg>("avoid_obstacle",1);
-        pub_obstacle.publish(distance_obstacle_msg);
+
 
 
         // get roll, pitch from observation
@@ -93,7 +95,7 @@ struct Ardrone_localizer
         measurement(1) = -tNorm.y();
         measurement(2) = yaw;
 
-        // add measurement
+//        // add measurement
         if (msg->transforms[i].child_frame_id == "/4x4_1")
         {
           kalman_filter.correctionStep(measurement, global_pose_4x4_1);
@@ -106,25 +108,27 @@ struct Ardrone_localizer
           lastPos95t = msg->transforms[i].header.stamp.toSec();
           lastPos95 = measurement;
         }
+
       }
     }
 
+    pub_obstacle.publish(distance_obstacle_msg);
     // if both markers appear at the same time, print their relative pose for calibration. EXPERIMENTAL!
-    if (lastPos95t - lastPos1t > -0.01 && lastPos95t - lastPos1t < 0.01)
-    {
-      tf::Matrix3x3 Ry;
-      Ry.setEulerYPR(lastPos95[2], 0, 0);
-
-      tf::Vector3 relPos = Ry * tf::Vector3(lastPos1[0] - lastPos95[0], lastPos1[1] - lastPos95[1], 0);
-
-      numRelPos++;
-      sumRelPos[0] += relPos[0];
-      sumRelPos[1] += relPos[1];
-      sumRelPos[2] += lastPos95[2] - lastPos1[2];
-
-      printf("relative orientation: %f %f %f (avg: %f %f %f)\n", relPos[0], relPos[1], lastPos95[2] - lastPos1[2], sumRelPos[0] / numRelPos, sumRelPos[1] / numRelPos, sumRelPos[2] / numRelPos);
-    }
-  }
+//    if (lastPos95t - lastPos1t > -0.01 && lastPos95t - lastPos1t < 0.01)
+//    {
+//      tf::Matrix3x3 Ry;
+//      Ry.setEulerYPR(lastPos95[2], 0, 0);
+//
+//      tf::Vector3 relPos = Ry * tf::Vector3(lastPos1[0] - lastPos95[0], lastPos1[1] - lastPos95[1], 0);
+//
+//      numRelPos++;
+//      sumRelPos[0] += relPos[0];
+//      sumRelPos[1] += relPos[1];
+//      sumRelPos[2] += lastPos95[2] - lastPos1[2];
+//
+//      printf("relative orientation: %f %f %f (avg: %f %f %f)\n", relPos[0], relPos[1], lastPos95[2] - lastPos1[2], sumRelPos[0] / numRelPos, sumRelPos[1] / numRelPos, sumRelPos[2] / numRelPos);
+//    }
+ }
 
   void navCB(const ardrone_autonomy::NavdataConstPtr& nav_msg)
   {
@@ -232,6 +236,7 @@ struct Ardrone_localizer
     sub_tf = nh_.subscribe("/tf", 100, &Ardrone_localizer::tfCB, this);
     sub_nav = nh_.subscribe("/ardrone/navdata", 100, &Ardrone_localizer::navCB, this);
     pub_pose = nh_.advertise<visnav_project::State>("/ardrone/filtered_pose", 10);
+    pub_obstacle = nh_.advertise<visnav_project::AvoidObstaclesMsg>("/avoid_obstacle",1);
 
     lastMarkerPos = tf::Vector3(0, 0, 0);
     sumRelPos = tf::Vector3(0, 0, 0);

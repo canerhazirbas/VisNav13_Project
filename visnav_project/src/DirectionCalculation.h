@@ -6,6 +6,7 @@
 #include <highgui.h>
 #include <cv.h>
 #include <math.h>
+//#include <eigen3/Eigen/Array>
 
 #define PI 3.14159265
 
@@ -84,7 +85,7 @@ using namespace cv;
     }
     visnav_project::LineDetectionMsg calcErrors(Point2i midPoint,int altd){
 
-      // http://mathworld.wolfram.com/Point-LineDistance2-Dimensional.html
+//      // http://mathworld.wolfram.com/Point-LineDistance2-Dimensional.html
       Point2i start_ = direction.getStart();
       Point2i end_   = direction.getEnd();
       double slope;
@@ -109,6 +110,10 @@ using namespace cv;
                              (double)(distancetoLine * (altd*0.00001) / FOCAL_LENGTH) * (midPoint.x *2);
       ROS_INFO("Slope_X : %.2f ; Distance_L : %.2f pixel; Distance_G : %.4f meters",line_msg.error_yaw,distancetoLine,line_msg.error_pitch);
       return line_msg;
+
+//    	//new method, consider the tilt between the ardrone plane and the ground
+//    	Vec3f point1_c, point2_c;
+
     }
     // Find if midPoint lies on left-right of line
     int findDistanceDirection(DirectedLine Dl, Point2i midPoint){
